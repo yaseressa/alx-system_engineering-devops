@@ -1,61 +1,40 @@
-# Postmortem
+Issue Summary:
+Duration: June 20, 2023, 10:00 AM - June 21, 2023, 2:00 PM (PST)
+Impact: The online shopping service experienced a complete outage for approximately 28 hours. During this time, users were unable to access the website, browse products, make purchases, or interact with their accounts. The outage affected 100% of the users, resulting in significant revenue loss and a negative impact on customer satisfaction.
 
-Upon the release of ALX's System Engineering & DevOps project 0x19, approximately 06:00 West African Time (WAT) here in Nigeria, an outage occurred on an isolated Ubuntu 14.04 container running an Apache web server. GET requests on the server led to 500 Internal Server Error's, when the expected response was an HTML file defining a simple Holberton WordPress site.
 
-## Debugging Process
+Timeline:
+June 20, 2023, 10:00 AM: The issue was detected when the monitoring system triggered an alert for high server response times.
+Investigation began immediately, with the assumption that the database server was the root cause due to its critical role in serving the web application.
+Multiple engineers were involved in analysing the database logs, network connectivity, and server performance metrics to identify the issue.
+Misleading paths: Initially, it was suspected that a sudden spike in database connections or a network issue caused the outage. However, after thorough analysis, these assumptions proved to be incorrect.
+The incident was escalated to the database operations team and senior management due to the severity of the outage and the inability to identify the root cause promptly.
+The incident was resolved on June 21, 2023, 2:00 PM, after a comprehensive investigation and resolution process.
+Root Cause and Resolution:
+Root Cause: The root cause of the outage was a misconfigured caching layer between the web application and the database server. The cache was not properly configured to handle sudden increases in traffic and failed to invalidate outdated entries effectively.
 
-Bug debugger Bamidele (Lexxyla... as in my actual initials... made that up on the spot, pretty
-good, huh?) encountered the issue upon opening the project and being, well, instructed to
-address it, roughly 19:20 PST. He promptly proceeded to undergo solving the problem.
 
-1. Checked running processes using `ps aux`. Two `apache2` processes - `root` and `www-data` -
-were properly running.
+Resolution: The issue was fixed by implementing the following steps:
+Identified and corrected the misconfiguration in the caching layer to ensure proper handling of cache invalidation.
+Conducted thorough testing and validation to verify the stability and performance of the web stack.
+Implemented additional monitoring and alerting mechanisms to proactively identify any future cache-related issues.
+Corrective and Preventative Measures:
+To prevent similar incidents in the future, the following measures will be implemented:
+Perform regular audits of system configurations and dependencies to identify potential misconfigurations and optimise performance.
+Enhance monitoring and alerting systems to provide early detection of issues and minimise downtime.
+Implement automated testing and validation processes to verify the correct functionality of critical components before deployment.
+Develop and follow a comprehensive incident response plan to ensure efficient escalation and communication during future incidents.
+Conduct post-incident reviews to identify further areas of improvement and share lessons learned with the engineering team.
+Tasks to Address the Issue:
+Review and update the caching layer configuration to handle variable traffic patterns and improve cache invalidation mechanisms.
+Enhance monitoring system to provide real-time visibility into cache utilisation, response times, and error rates.
+Implement automated testing to simulate and validate high load scenarios to ensure the stability of the web stack.
+Document and distribute an incident response plan, including clear escalation paths and communication channels.
+Conduct training sessions for the engineering team on incident management best practices and techniques.
 
-2. Looked in the `sites-available` folder of the `/etc/apache2/` directory. Determined that
-the web server was serving content located in `/var/www/html/`.
 
-3. In one terminal, ran `strace` on the PID of the `root` Apache process. In another, curled
-the server. Expected great things... only to be disappointed. `strace` gave no useful
-information.
 
-4. Repeated step 3, except on the PID of the `www-data` process. Kept expectations lower this
-time... but was rewarded! `strace` revelead an `-1 ENOENT (No such file or directory)` error
-occurring upon an attempt to access the file `/var/www/html/wp-includes/class-wp-locale.phpp`.
 
-5. Looked through files in the `/var/www/html/` directory one-by-one, using Vim pattern
-matching to try and locate the erroneous `.phpp` file extension. Located it in the
-`wp-settings.php` file. (Line 137, `require_once( ABSPATH . WPINC . '/class-wp-locale.php' );`).
+In conclusion, the web stack outage was caused by a misconfigured caching layer, resulting in a complete service outage for 28 hours. The issue was resolved by fixing the misconfiguration and implementing additional measures to improve monitoring and caching mechanisms. Moving forward, the team will focus on implementing corrective and preventative measures to enhance system stability, responsiveness, and resilience to prevent similar incidents from occurring in the future.
 
-6. Removed the trailing `p` from the line.
 
-7. Tested another `curl` on the server. 200 A-ok!
-
-8. Wrote a Puppet manifest to automate fixing of the error.
-
-## Summation
-
-In short, a typo. Gotta love'em. In full, the WordPress app was encountering a critical
-error in `wp-settings.php` when tyring to load the file `class-wp-locale.phpp`. The correct
-file name, located in the `wp-content` directory of the application folder, was
-`class-wp-locale.php`.
-
-Patch involved a simple fix on the typo, removing the trailing `p`.
-
-## Prevention
-
-This outage was not a web server error, but an application error. To prevent such outages
-moving forward, please keep the following in mind.
-
-* Test! Test test test. Test the application before deploying. This error would have arisen
-and could have been addressed earlier had the app been tested.
-
-* Status monitoring. Enable some uptime-monitoring service such as
-[UptimeRobot](./https://uptimerobot.com/) to alert instantly upon outage of the website.
-
-Note that in response to this error, I wrote a Puppet manifest
-[0-strace_is_your_friend.pp](https://github.com/Toluope05/alx-system_engineering-devops/blob/main/0x17-web_stack_debugging_3/0-strace_is_your_friend.pp)
-to automate fixing of any such identitical errors should they occur in the future. The manifest
-replaces any `phpp` extensions in the file `/var/www/html/wp-settings.php` with `php`.
-
-But of course, it will never occur again, because we're programmers, and we never make
-errors! :wink:
